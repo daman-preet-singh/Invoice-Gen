@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Invoice Generator</title>
+  <style>
+    body {
+      font-family: 'Arial', sans-serif;
+      margin: 0;
+      padding: 0;
+      background-color: #f5f5f5;
+    }
+
+    .container {
+      width: 800px;
+      margin: 20px auto;
+      background: #fff;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+    }
+
+    h1 {
+      font-family: 'Georgia', serif;
+      color: #003366;
+      text-align: center;
+      margin-bottom: 20px;
+    }
+
+    .form-group {
+      margin-bottom: 15px;
+    }
+
+    label {
+      display: block;
+      font-weight: bold;
+      margin-bottom: 5px;
+    }
+
+    input, textarea, button {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      font-size: 16px;
+    }
+
+    input[type="button"] {
+      width: auto;
+      background-color: #003366;
+      color: #fff;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: bold;
+      margin-top: 10px;
+    }
+
+    .btn {
+      display: block;
+      width: 100%;
+      padding: 10px;
+      background: #0055aa;
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      font-size: 16px;
+      font-weight: bold;
+      cursor: pointer;
+      text-align: center;
+    }
+
+    .btn:hover {
+      background: #003366;
+    }
+
+    .footer {
+      margin-top: 20px;
+      text-align: center;
+      font-size: 14px;
+      color: #555;
+      font-family: 'Georgia', serif;
+    }
+
+    .item-row {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+
+    .item-row input {
+      flex: 1;
+    }
+
+    .item-row .remove-item {
+      flex: 0;
+      background-color: #d9534f;
+      color: white;
+      font-weight: bold;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Invoice Generator</h1>
+    <form id="invoice-form">
+      <div class="form-group">
+        <label for="invoice-number">Invoice Number:</label>
+        <input type="number" id="invoice-number" placeholder="Enter Invoice Number" value="104" required>
+      </div>
+
+      <div class="form-group">
+        <label for="bill-to">Bill To:</label>
+        <textarea id="bill-to" rows="2" placeholder="Enter customer's name and address" required></textarea>
+      </div>
+
+      <div class="form-group">
+        <label for="invoice-date">Invoice Date:</label>
+        <input type="date" id="invoice-date" required>
+      </div>
+
+      <div class="form-group">
+        <label>Items:</label>
+        <div id="items-container">
+          <div class="item-row">
+            <input type="text" placeholder="Description" class="item-description" required>
+            <input type="number" placeholder="Amount (£)" class="item-amount" required>
+            <input type="button" value="X" class="remove-item">
+          </div>
+        </div>
+        <input type="button" value="Add Item" id="add-item">
+      </div>
+
+      <button type="button" id="generate-pdf" class="btn">Save as PDF</button>
+    </form>
+
+    <div class="footer">
+      <p>Thank you for your business!</p>
+      <p>Payment is due within 15 days.</p>
+    </div>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.4.0/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
+  <script>
+    document.getElementById('generate-pdf').addEventListener('click', () => {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF({
+            format: 'a4',
+            unit: 'mm',
+            orientation: 'portrait'
+        });
+
+        const invoiceNumber = document.getElementById('invoice-number').value;
+        const billTo = document.getElementById('bill-to').value.trim();
+        const invoiceDate = document.getElementById('invoice-date').value;
+        const descriptions = Array.from(document.querySelectorAll('.item-description')).map(input => input.value.trim());
+        const amounts = Array.from(document.querySelectorAll('.item-amount')).map(input => parseFloat(input.value.trim()));
+
+        if (!billTo || !invoiceDate || descriptions.some(desc => !desc) || amounts.some(amount => isNaN(amount))) {
+            alert('Please fill all fields correctly.');
+            return;
+        }
+
+        const leftMargin = 20;
+
+        // Header
+        doc.setFontSize(18);
+        doc.setTextColor(0, 51, 102);
+        doc.text("TAX INVOICE", leftMargin, 20);
+        doc.setFontSize(12);
+        doc.setTextColor(0);
+        doc.text("JJ Professional Work", leftMargin, 30);
+
+        // Details
+        doc.text(`Invoice #: ${invoiceNumber}`, 200, 20, { align: 'right' });
+        doc.text(`Invoice Date: ${invoiceDate}`, 200, 30, { align: 'right' });
+
+        doc.setFontSize(12);
+        doc.text("Bill To:", leftMargin, 50);
+        doc.text(billTo, leftMargin, 60);
+
+        // Table with items
+        const items = descriptions.map((desc, i) => [desc, `£${amounts[i].toFixed(2)}`]);
+        doc.autoTable({
+            startY: 80,
+            head: [['Description', 'Amount (£)']],
+            body: items,
+            headStyles: { fillColor: [0, 51, 102], textColor: [255, 255, 255] },
+            columnStyles: {
+                0: { halign: 'left', cellWidth: 140 }, // Description column aligned to the left
+                1: { halign: 'right' } // Amount column aligned to the right
+            },
+            margin: { left: leftMargin } // Table aligned with other headings
+        });
+
+        // Total
+        const total = amounts.reduce((sum, amount) => sum + amount, 0).toFixed(2);
+        const finalY = doc.previousAutoTable.finalY + 10;
+        doc.setFontSize(12);
+        doc.text(`Total: £${total}`, 200, finalY, { align: 'right' });
+
+        // Footer
+        const footerY = doc.internal.pageSize.height - 20;
+        doc.setFontSize(10);
+        doc.text("Thank you for your business!", doc.internal.pageSize.width / 2, footerY, { align: 'center' });
+        doc.text("Payment is due within 15 days.", doc.internal.pageSize.width / 2, footerY + 10, { align: 'center' });
+
+        doc.save(`invoice_${invoiceNumber}.pdf`);
+    });
+</script>
+
+
+</html>
